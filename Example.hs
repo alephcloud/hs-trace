@@ -65,7 +65,7 @@ instance (Functor m, Monad m) ⇒ MonadError e (TraceT t e m) where
 
 
 data Err
-  = Err
+  = Err String
   deriving Show
 
 data ErrorTrace t e
@@ -84,14 +84,14 @@ instance (Show t, Show e) ⇒ Show (ErrorTrace t e) where
 makeLenses ''ErrorTrace
 makePrisms ''ErrorTrace
 
-runTrace
-  ∷ Monad m
+runTraceT
+  ∷ ( Functor m
+    , Monad m
+    )
   ⇒ TraceT t e m α
-  → m (Either (ErrorTrace t e) α)
-runTrace =
-  eitherT
-    (return . Left . review _ErrorTrace . flip runState mempty)
-    (return . Right)
+  → EitherT (ErrorTrace t e) m α
+runTraceT =
+  bimapEitherT (review _ErrorTrace . flip runState mempty) id
   . _traceT
 
 test ∷ TraceT Tags Err IO ()
@@ -99,4 +99,10 @@ test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
       liftIO $ putStrLn "ASDFADF"
-      throwError Err
+      throwError $ Err "Damn!"
+
+main ∷ IO ()
+main =
+  runTraceT test
+    & eitherT (fail . show) return
+
