@@ -98,11 +98,16 @@ test ∷ TraceT Tags Err IO ()
 test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
-      liftIO $ putStrLn "ASDFADF"
+      liftIO $ putStrLn "Hello world"
       throwError $ Err "Damn!"
 
 main ∷ IO ()
 main =
   runTraceT test
     & eitherT (fail . show) return
+--
+-- OUTPUTS
+--
+--     Hello world
+--     *** Exception: user error (FrontEnd.GetUserInfo ⇑ Err "Damn!")
 
