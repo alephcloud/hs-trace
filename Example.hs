@@ -52,35 +52,52 @@ instance Monad m ⇒ MonadError e (TraceT t e m) where
      lift (runEitherT m)
        >>= either (h . flip evalState mempty) return
 
-class Monad m ⇒ AsError m t e where
-  asError
+class Monad m ⇒ HoistError m t e e' | t → e where
+  hoistError
     ∷ t α
-    → e
+    → (e → e')
     → m α
 
-(<?>)
-  ∷ AsError m t e
+instance MonadError e m ⇒ HoistError m Maybe () e where
+  hoistError Nothing f = throwError $ f ()
+  hoistError (Just x) _ = return x
+
+instance MonadError e' m ⇒ HoistError m (Either e) e e' where
+  hoistError (Left e) f = throwError $ f e
+  hoistError (Right x) _ = return x
+
+
+(<%?>)
+  ∷ HoistError m t e e'
   ⇒ t α
-  → e
+  → (e → e')
   → m α
-(<?>) = asError
+(<%?>) = hoistError
+
+(<%!?>)
+  ∷ HoistError m t e e'
+  ⇒ m (t α)
+  → (e → e')
+  → m α
+m <%!?> e = do
+  x ← m
+  x <%?> e
+
+(<?>)
+  ∷ HoistError m t e e'
+  ⇒ t α
+  → e'
+  → m α
+m <?> e = m <%?> const e
 
 (<!?>)
-  ∷ AsError m t e
+  ∷ HoistError m t e e'
   ⇒ m (t α)
-  → e
+  → e'
   → m α
-mx <!?> e = do
-  x ← mx
+m <!?> e = do
+  x ← m
   x <?> e
-
-instance MonadError e m ⇒ AsError m Maybe e where
-  asError Nothing e = throwError e
-  asError (Just x) _ = return x
-
-instance MonadError e m ⇒ AsError m (Either e') (e' → e) where
-  asError (Left e) f = throwError $ f e
-  asError (Right x) _ = return x
 
 data Err
   = Err String
@@ -112,19 +129,30 @@ runTraceT =
   fmapLT (review _ErrorTrace . flip runState mempty)
   . _traceT
 
+annoyingFunction
+  ∷ MonadIO m
+  ⇒ Int
+  → m (Either Int ())
+annoyingFunction i =
+  return $ Left i
+
 test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
       liftIO $ putStrLn "Hello world"
-      throwError $ Err "Damn!"
+      annoyingFunction 10 <!?> Err "Damn"
+      annoyingFunction 10 <%!?> (Err . show)
+      Left "Welp" <%?> Err
+      Nothing <?> Err "nothing"
+
 
 main ∷ IO ()
 main =
   runTraceT test
     & eitherT (fail . show) return
---
+
 -- OUTPUTS
 --
 --     Hello world
---     *** Exception: user error (FrontEnd.GetUserInfo ⇑ Err "Damn!")
+--     *** Exception: user error (FrontEnd.GetUserInfo ⇑ Err "Damn")
 
