@@ -1,4 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -25,7 +26,11 @@ import Control.Monad
 import Control.Monad.Error
 import Control.Monad.Trans.Either
 import Control.Monad.State
-import Control.Lens hiding (Snoc)
+import Control.Lens
+import Data.Monoid
+import qualified Data.Sequence as S
+import Data.List
+import qualified Data.Foldable as F
 
 data Tags
   = FrontEnd
@@ -37,7 +42,7 @@ data Tags
 
 newtype TraceT t e m α
   = TraceT
-  { _traceT ∷ EitherT (State [t] e) m α
+  { _traceT ∷ EitherT (State (S.Seq t) e) m α
   } deriving (Functor, Monad, Applicative, MonadIO, MonadTrans)
 
 makeLenses ''TraceT
@@ -50,24 +55,42 @@ class MonadTrace t m | m → t where
 
 instance Functor m ⇒ MonadTrace t (TraceT t e m) where
   traceScope t =
-    traceT %~ bimapEitherT (withState (t:)) id
+    traceT %~ bimapEitherT (withState (|> t)) id
 instance (Functor m, Monad m) ⇒ MonadError e (TraceT t e m) where
   throwError =
     TraceT . bimapEitherT return id . left
   catchError (TraceT m) h =
      lift (runEitherT m)
-       >>= either (h . flip evalState []) return
+       >>= either (h . flip evalState mempty) return
 
 
-data Err = Err
+data Err
+  = Err
+  deriving Show
+
+data ErrorTrace t e
+  = ErrorTrace
+  { _etError ∷ e
+  , _etTrace ∷ S.Seq t
+  }
+
+instance (Show t, Show e) ⇒ Show (ErrorTrace t e) where
+  showsPrec p ErrorTrace{..} =
+    showParen (p > 10) $
+      foldr (.) id (intersperse ('.':) $ shows <$> F.toList _etTrace)
+      . (" ⇑ " ++)
+      . shows _etError
+
+makeLenses ''ErrorTrace
+makePrisms ''ErrorTrace
 
 runTrace
   ∷ Monad m
   ⇒ TraceT t e m α
-  → m (Either (e,[t]) α)
+  → m (Either (ErrorTrace t e) α)
 runTrace =
   eitherT
-    (return . Left . flip runState [])
+    (return . Left . review _ErrorTrace . flip runState mempty)
     (return . Right)
   . _traceT
 
