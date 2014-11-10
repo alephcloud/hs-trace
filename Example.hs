@@ -27,8 +27,6 @@ import Control.Monad.Trans.Either
 import Control.Monad.State
 import Control.Lens hiding (Snoc)
 
-data Void
-
 data Tags
   = FrontEnd
   | BackEnd
@@ -62,6 +60,16 @@ instance (Functor m, Monad m) ⇒ MonadError e (TraceT t e m) where
 
 
 data Err = Err
+
+runTrace
+  ∷ Monad m
+  ⇒ TraceT t e m α
+  → m (Either (e,[t]) α)
+runTrace =
+  eitherT
+    (return . Left . flip runState [])
+    (return . Right)
+  . _traceT
 
 test ∷ TraceT Tags Err IO ()
 test = do
