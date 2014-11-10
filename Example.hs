@@ -65,6 +65,10 @@ instance MonadError e' m ⇒ HoistError m (Either e) e e' where
   hoistError (Left e) f = throwError $ f e
   hoistError (Right x) _ = return x
 
+infixr 9 <%?>
+infixr 9 <%!?>
+infixr 9 <?>
+infixr 9 <!?>
 
 (<%?>)
   ∷ HoistError m t e e'
@@ -140,7 +144,7 @@ test = do
     traceScope GetUserInfo $ do
       liftIO $ putStrLn "Hello world"
       annoyingFunction 10 <!?> Err "Damn"
-      annoyingFunction 10 <%!?> (Err . show)
+      annoyingFunction 10 <%!?> Err . show
       Left "Welp" <%?> Err
       Nothing <?> Err "nothing"
 
