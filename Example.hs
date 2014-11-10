@@ -1,3 +1,4 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -23,6 +24,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Error
 import Control.Monad.Trans.Either
+import Control.Monad.State
 import Control.Lens hiding (Snoc)
 
 data Void
@@ -35,37 +37,22 @@ data Tags
   | Dynamo
   deriving Show
 
+newtype TraceT t e m α
+  = TraceT
+  { _trace ∷ StateT [t] (EitherT e m) α
+  } deriving (Functor, Monad, Applicative, MonadState [t], MonadTrace t, MonadError e, MonadIO)
 
-type Err t e = [t] → ([t], e)
+class MonadTrace t m | m → t where
+  traceScope
+    ∷ t
+    → m α
+    → m α
 
-newtype TaggedEitherT t e m α
-  = TaggedEitherT
-  { _taggedEitherT ∷ EitherT (Err t e) m α
-  } deriving (Functor, Monad, Applicative)
+instance MonadTrace t (StateT [t] m) where
+  traceScope t = withStateT (t:)
 
-instance (Functor m, Monad m) ⇒ MonadError e (TaggedEitherT t e m) where
-  throwError = TaggedEitherT . bimapEitherT (flip (,)) id . left
-  catchError (TaggedEitherT m) h = TaggedEitherT $ catchError m (_taggedEitherT . h . snd . ($[]))
-
-tagScope
-  ∷ Functor m
-  ⇒ t
-  → TaggedEitherT t e m a
-  → TaggedEitherT t e m a
-tagScope t = TaggedEitherT . bimapEitherT (\f ts → f (t:ts)) id . _taggedEitherT
-
-runTaggedEitherT
-  ∷ Functor m
-  ⇒ TaggedEitherT t e m α
-  → m (Either ([t],e) α)
-runTaggedEitherT =
-  fmap (_Left %~ ($ []))
-  . runEitherT
-  . _taggedEitherT
-
-test ∷ TaggedEitherT Tags String IO ()
 test = do
-  tagScope FrontEnd $
-    tagScope GetUserInfo $ do
-      throwError "Damn"
-
+  traceScope FrontEnd $
+    traceScope GetUserInfo $ do
+      liftIO $ print ()
+      throwError ()
