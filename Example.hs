@@ -50,6 +50,26 @@ instance Monad m ⇒ MonadError e (TraceT t e m) where
      lift (runEitherT m)
        >>= either (h . flip evalState mempty) return
 
+class AsError m t e where
+  asError
+    ∷ t α
+    → e
+    → m α
+
+(<?>)
+  ∷ AsError m t e
+  ⇒ t α
+  → e
+  → m α
+(<?>) = asError
+
+instance MonadError e m ⇒ AsError m Maybe e where
+  asError Nothing e = throwError e
+  asError (Just x) _ = return x
+
+instance MonadError e m ⇒ AsError m (Either e') (e' → e) where
+  asError (Left e) f = throwError $ f e
+  asError (Right x) _ = return x
 
 data Err
   = Err String
@@ -85,6 +105,7 @@ test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
       liftIO $ putStrLn "Hello world"
+      Left "asdf" <?> Err
       throwError $ Err "Damn!"
 
 main ∷ IO ()
