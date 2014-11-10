@@ -49,8 +49,7 @@ instance Monad m ⇒ MonadError e (TraceT t e m) where
   throwError =
     TraceT . throwT . return
   catchError (TraceT m) h =
-     lift (runEitherT m)
-       >>= either (h . flip evalState mempty) return
+    TraceT $ catchT m (_traceT . h . flip evalState mempty)
 
 class Monad m ⇒ HoistError m t e e' | t → e where
   hoistError
