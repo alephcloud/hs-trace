@@ -38,12 +38,6 @@ data Tags
 
 type Err t e = [t] → ([t], e)
 
-throw
-  ∷ Monad m
-  ⇒ e
-  → EitherT (Err t e) m a
-throw  = left . flip (,)
-
 newtype TaggedEitherT t e m α
   = TaggedEitherT
   { _taggedEitherT ∷ EitherT (Err t e) m α
