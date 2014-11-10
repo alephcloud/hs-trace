@@ -9,6 +9,7 @@
 module Example where
 
 import Control.Applicative
+import Control.Error
 import Control.Monad
 import Control.Monad.Error
 import Control.Monad.Trans.Either
@@ -40,12 +41,11 @@ class MonadTrace t m | m → t where
     → m α
     → m α
 
-instance Functor m ⇒ MonadTrace t (TraceT t e m) where
+instance Monad m ⇒ MonadTrace t (TraceT t e m) where
   traceScope t =
-    traceT %~ bimapEitherT (withState (|> t)) id
-instance (Functor m, Monad m) ⇒ MonadError e (TraceT t e m) where
-  throwError =
-    TraceT . bimapEitherT return id . left
+    traceT %~ fmapLT (withState (|> t))
+instance Monad m ⇒ MonadError e (TraceT t e m) where
+  throwError = TraceT . throwT . return
   catchError (TraceT m) h =
      lift (runEitherT m)
        >>= either (h . flip evalState mempty) return
@@ -78,7 +78,7 @@ runTraceT
   ⇒ TraceT t e m α
   → EitherT (ErrorTrace t e) m α
 runTraceT =
-  bimapEitherT (review _ErrorTrace . flip runState mempty) id
+  fmapLT (review _ErrorTrace . flip runState mempty)
   . _traceT
 
 test = do
