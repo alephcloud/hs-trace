@@ -44,13 +44,15 @@ class MonadTrace t m | m → t where
 instance Monad m ⇒ MonadTrace t (TraceT t e m) where
   traceScope t =
     traceT %~ fmapLT (withState (|> t))
+
 instance Monad m ⇒ MonadError e (TraceT t e m) where
-  throwError = TraceT . throwT . return
+  throwError =
+    TraceT . throwT . return
   catchError (TraceT m) h =
      lift (runEitherT m)
        >>= either (h . flip evalState mempty) return
 
-class AsError m t e where
+class Monad m ⇒ AsError m t e where
   asError
     ∷ t α
     → e
@@ -62,6 +64,15 @@ class AsError m t e where
   → e
   → m α
 (<?>) = asError
+
+(<!?>)
+  ∷ AsError m t e
+  ⇒ m (t α)
+  → e
+  → m α
+mx <!?> e = do
+  x ← mx
+  x <?> e
 
 instance MonadError e m ⇒ AsError m Maybe e where
   asError Nothing e = throwError e
@@ -105,7 +116,6 @@ test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
       liftIO $ putStrLn "Hello world"
-      Left "asdf" <?> Err
       throwError $ Err "Damn!"
 
 main ∷ IO ()
