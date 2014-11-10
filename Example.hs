@@ -39,8 +39,10 @@ data Tags
 
 newtype TraceT t e m α
   = TraceT
-  { _trace ∷ StateT [t] (EitherT e m) α
-  } deriving (Functor, Monad, Applicative, MonadState [t], MonadTrace t, MonadError e, MonadIO)
+  { _traceT ∷ EitherT (State [t] e) m α
+  } deriving (Functor, Monad, Applicative, MonadIO, MonadTrans)
+
+makeLenses ''TraceT
 
 class MonadTrace t m | m → t where
   traceScope
@@ -48,11 +50,22 @@ class MonadTrace t m | m → t where
     → m α
     → m α
 
-instance MonadTrace t (StateT [t] m) where
-  traceScope t = withStateT (t:)
+instance Functor m ⇒ MonadTrace t (TraceT t e m) where
+  traceScope t =
+    traceT %~ bimapEitherT (withState (t:)) id
+instance (Functor m, Monad m) ⇒ MonadError e (TraceT t e m) where
+  throwError =
+    TraceT . bimapEitherT return id . left
+  catchError (TraceT m) h =
+     lift (runEitherT m)
+       >>= either (h . flip evalState []) return
 
+
+data Err = Err
+
+test ∷ TraceT Tags Err IO ()
 test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
-      liftIO $ print ()
-      throwError ()
+      liftIO $ putStrLn "ASDFADF"
+      throwError Err
