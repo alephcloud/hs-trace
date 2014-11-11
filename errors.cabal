@@ -27,6 +27,7 @@ library
                      , either
                      , errors
                      , containers
+                     , kan-extensions
 
 
   -- hs-source-dirs:

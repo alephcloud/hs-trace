@@ -11,6 +11,7 @@ module Example where
 import Control.Applicative
 import Control.Error
 import Control.Monad
+import Control.Monad.Codensity
 import Control.Monad.Error
 import Control.Monad.Trans.Either
 import Control.Monad.State
@@ -44,6 +45,15 @@ class MonadTrace t m | m → t where
 instance Monad m ⇒ MonadTrace t (TraceT t e m) where
   traceScope t =
     traceT %~ fmapLT (withState (|> t))
+
+putTrace
+  ∷ Monad m
+  ⇒ t
+  → Codensity (TraceT t e m) ()
+putTrace t =
+  Codensity $ \cont →
+    traceScope t $ cont ()
+
 
 instance Monad m ⇒ MonadError e (TraceT t e m) where
   throwError =
@@ -132,6 +142,9 @@ runTraceT =
   fmapLT (review _ErrorTrace . flip runState mempty)
   . _traceT
 
+-- For some reason, people design these weird APIs that are really difficult to
+-- compose. Often they look like this (but most of the time, it is worse, and
+-- just in 'IO').
 annoyingFunction
   ∷ MonadIO m
   ⇒ Int
@@ -139,6 +152,8 @@ annoyingFunction
 annoyingFunction i =
   return $ Left i
 
+-- Here's an example program with tracing
+test ∷ TraceT Tags Err IO ()
 test = do
   traceScope FrontEnd $
     traceScope GetUserInfo $ do
@@ -148,10 +163,21 @@ test = do
       Left "Welp" <%?> Err
       Nothing <?> Err "nothing"
 
+-- Just for kicks, we can also do a codensity version
+test' ∷ TraceT Tags Err IO ()
+test' = flip runCodensity (const $ return ()) $ do
+  putTrace FrontEnd
+  putTrace GetUserInfo
+  liftIO $ putStrLn "Hello world"
+  lift $ do
+    annoyingFunction 10 <!?> Err "Damn"
+    annoyingFunction 10 <%!?> Err . show
+    Left "Welp" <%?> Err
+    Nothing <?> Err "nothing"
 
 main ∷ IO ()
 main =
-  runTraceT test
+  runTraceT test'
     & eitherT (fail . show) return
 
 -- OUTPUTS
