@@ -63,17 +63,15 @@ instance Monad m ⇒ MonadError e (TraceT t e m) where
 
 class Monad m ⇒ HoistError m t e e' | t → e where
   hoistError
-    ∷ t α
-    → (e → e')
+    ∷ (e → e')
+    → t α
     → m α
 
 instance MonadError e m ⇒ HoistError m Maybe () e where
-  hoistError Nothing f = throwError $ f ()
-  hoistError (Just x) _ = return x
+  hoistError f = maybe (throwError $ f ()) return
 
 instance MonadError e' m ⇒ HoistError m (Either e) e e' where
-  hoistError (Left e) f = throwError $ f e
-  hoistError (Right x) _ = return x
+  hoistError f = either (throwError . f) return
 
 infixr 9 <%?>
 infixr 9 <%!?>
@@ -85,7 +83,7 @@ infixr 9 <!?>
   ⇒ t α
   → (e → e')
   → m α
-(<%?>) = hoistError
+(<%?>) = flip hoistError
 
 (<%!?>)
   ∷ HoistError m t e e'
