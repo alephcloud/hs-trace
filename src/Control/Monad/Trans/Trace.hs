@@ -43,14 +43,14 @@ instance Functor m ⇒ MonadTrace t (TraceT t e m) where
     TraceT . bimapEitherT (withState (|> t)) id . _traceT
 
 instance MonadTransControl (TraceT t e) where
-  newtype StT (TraceT t e) a = StTraceT { unStTraceT ∷ StT (EitherT (State (Seq t) e)) a }
+  newtype StT (TraceT t e) α = StTraceT { unStTraceT ∷ StT (EitherT (State (Seq t) e)) α }
   liftWith = defaultLiftWith TraceT _traceT StTraceT
   {-# INLINE liftWith #-}
   restoreT = defaultRestoreT TraceT unStTraceT
   {-# INLINE restoreT #-}
 
 instance MonadBaseControl b m => MonadBaseControl b (TraceT t e m) where
-  newtype StM (TraceT t e m) a = StMTraceT { unStMTraceT ∷ ComposeSt (TraceT t e) m a }
+  newtype StM (TraceT t e m) α = StMTraceT { unStMTraceT ∷ ComposeSt (TraceT t e) m α }
   liftBaseWith = defaultLiftBaseWith StMTraceT
   {-# INLINE liftBaseWith #-}
   restoreM  = defaultRestoreM unStMTraceT
