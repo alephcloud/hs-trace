@@ -6,7 +6,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Jon Sterling
 maintainer:          jon@jonmsterling.com
--- copyright:
+copyright:           Copyright (c) 2014 AlephCloud, Inc
 category:            Control
 build-type:          Simple
 -- extra-source-files:
