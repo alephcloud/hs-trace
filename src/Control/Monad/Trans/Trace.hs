@@ -23,11 +23,17 @@ import Control.Monad.Trans.State
 import Control.Monad.Identity
 import Data.Sequence hiding (empty)
 
+-- | A concrete monad transformer @'Trace' t e m@ where @t@ is the type of
+-- tags/breadcrumbs, @e@ is the type of errors, and @m@ is the underlying monad.
+--
 newtype TraceT t e m α
   = TraceT
   { _traceT ∷ EitherT (State (Seq t) e) m α
   } deriving (Functor, Monad, Applicative, MonadIO, MonadTrans, MonadBase b)
 
+-- | Run a traced traced computation to get either its result, or an error and
+-- its provenience ('ErrorTrace').
+--
 runTraceT
   ∷ ( Functor m
     , Monad m
