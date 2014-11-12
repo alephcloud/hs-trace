@@ -6,6 +6,8 @@ module Control.Monad.Trace.Class
 ( MonadTrace(..)
 ) where
 
+import Data.Sequence
+
 -- | A class for monads that have a scoped tracing effect
 class MonadTrace t m | m → t where
   -- | Add a tag or breadcrumb to a scope
@@ -13,3 +15,7 @@ class MonadTrace t m | m → t where
     ∷ t
     → m α
     → m α
+
+  -- | Realize your own trace
+  readTrace
+    ∷ m (Seq t)
