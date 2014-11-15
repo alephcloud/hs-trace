@@ -30,7 +30,7 @@ instance Monoid e ⇒ Monoid (ErrorTrace t e) where
 instance (Show t, Show e) ⇒ Show (ErrorTrace t e) where
   showsPrec p ErrorTrace{..} =
     showParen (p > 10) $
-      foldr (.) id (intersperse (" ∥ "++) $ (foldr (.) id . fmap shows . F.toList) <$> _etTrace)
+      foldr (.) id (intersperse (" ∥ "++) $ (foldr (.) id . intersperse ('.':) . fmap shows . F.toList) <$> _etTrace)
       . (" ⇑ " ++)
       . shows _etError
 
