@@ -63,7 +63,7 @@ instance MonadTransControl (TraceT t e) where
   restoreT = TraceT . restoreT . restoreT . liftM unStTraceT
   {-# INLINE restoreT #-}
 
-instance MonadBaseControl b m => MonadBaseControl b (TraceT t e m) where
+instance MonadBaseControl b m ⇒ MonadBaseControl b (TraceT t e m) where
   newtype StM (TraceT t e m) α = StMTraceT { unStMTraceT ∷ ComposeSt (TraceT t e) m α }
   liftBaseWith = defaultLiftBaseWith StMTraceT
   {-# INLINE liftBaseWith #-}
