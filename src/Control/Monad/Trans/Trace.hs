@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -56,6 +57,21 @@ runTraceT
   → m (Either (ErrorTrace t e) α)
 runTraceT (TraceT m) = runReaderT (runEitherT m) S.empty
 
+#if MIN_VERSION_monad_control(1,0,0)
+instance MonadTransControl (TraceT t e) where
+  type StT (TraceT t e) α = StT (ReaderT (Seq t)) (StT (EitherT (ErrorTrace t e)) α)
+  liftWith f = TraceT . liftWith $ \run → liftWith $ \run' → f $ run' . run . _traceT
+  {-# INLINE liftWith #-}
+  restoreT = TraceT . restoreT . restoreT
+  {-# INLINE restoreT #-}
+
+instance MonadBaseControl b m ⇒ MonadBaseControl b (TraceT t e m) where
+  type StM (TraceT t e m) α = ComposeSt (TraceT t e) m α
+  liftBaseWith = defaultLiftBaseWith
+  {-# INLINE liftBaseWith #-}
+  restoreM  = defaultRestoreM
+  {-# INLINE restoreM #-}
+#else
 instance MonadTransControl (TraceT t e) where
   newtype StT (TraceT t e) α = StTraceT { unStTraceT ∷ StT (ReaderT (Seq t)) (StT (EitherT (ErrorTrace t e)) α) }
   liftWith f = TraceT . liftWith $ \run → liftWith $ \run' → f $ liftM StTraceT . run' . run . _traceT
@@ -69,4 +85,5 @@ instance MonadBaseControl b m ⇒ MonadBaseControl b (TraceT t e m) where
   {-# INLINE liftBaseWith #-}
   restoreM  = defaultRestoreM unStMTraceT
   {-# INLINE restoreM #-}
+#endif
 
