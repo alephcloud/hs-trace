@@ -25,14 +25,15 @@ library
     Control.Monad.Trans.Trace
 
   build-depends:       base >=4.7 && <4.8
-                     , containers
-                     , either
-                     , kan-extensions
-                     , monad-control
-                     , mtl
-                     , profunctors
-                     , transformers
-                     , transformers-base
+                     , containers >=0.5.5
+                     , either >=4.3
+                     , kan-extensions >=4.2
+                     , monad-control >=0.3
+                     , mtl >=2.1
+                     , profunctors >=4.3
+                     , transformers >=0.2
+                     , transformers-base >=0.4
+                     , transformers-compat >=0.3
 
   hs-source-dirs:      src
   default-language:    Haskell2010
