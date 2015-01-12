@@ -24,7 +24,7 @@ library
     Control.Monad.Trace.ErrorTrace
     Control.Monad.Trans.Trace
 
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.7 && <4.9
                      , containers >=0.5.5
                      , either >=4.3
                      , kan-extensions >=4.2
