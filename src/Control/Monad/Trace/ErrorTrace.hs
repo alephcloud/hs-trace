@@ -1,5 +1,7 @@
-{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Control.Monad.Trace.ErrorTrace
 ( ErrorTrace(..)
@@ -9,11 +11,14 @@ module Control.Monad.Trace.ErrorTrace
 ) where
 
 import Control.Applicative
+import Control.DeepSeq
 import qualified Data.Foldable as F
 import Data.Monoid
 import Data.Profunctor
 import Data.Sequence as S
 import Data.List
+import Data.Typeable
+import GHC.Generics
 
 -- | A datatype containing an error and its provenience(s).
 --
@@ -22,6 +27,9 @@ data ErrorTrace t e
   { _etError ∷ !e -- ^ The error
   , _etTrace ∷ ![Seq t] -- ^ The list of traces (for each path tried)
   }
+  deriving (Typeable, Generic)
+
+instance (NFData t, NFData e) ⇒ NFData (ErrorTrace t e)
 
 instance Monoid e ⇒ Monoid (ErrorTrace t e) where
   mempty = ErrorTrace mempty mempty
