@@ -16,6 +16,6 @@ class MonadTrace t m | m → t where
     → m α
     → m α
 
-  -- | Realize your own trace
+  -- | Read back your own trace
   readTrace
     ∷ m (Seq t)
