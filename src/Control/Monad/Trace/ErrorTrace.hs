@@ -5,7 +5,6 @@
 
 module Control.Monad.Trace.ErrorTrace
 ( ErrorTrace(..)
-, _ErrorTrace
 , etError
 , etTrace
 ) where
@@ -14,7 +13,6 @@ import Control.Applicative
 import Control.DeepSeq
 import qualified Data.Foldable as F
 import Data.Monoid
-import Data.Profunctor
 import Data.Sequence as S
 import Data.List
 import Data.Typeable
@@ -41,18 +39,6 @@ instance (Show t, Show e) ⇒ Show (ErrorTrace t e) where
       foldr (.) id (intersperse (" ∥ "++) $ (foldr (.) id . intersperse ('.':) . fmap shows . F.toList) <$> _etTrace)
       . (" ⇑ " ++)
       . shows _etError
-
--- | An isomorphism @'ErrorTrace' t e ≅ (e, 'Seq' t)@.
---
-_ErrorTrace
-  ∷ ( Choice p
-    , Functor f
-    )
-  ⇒ p (ErrorTrace t e) (f (ErrorTrace t' e'))
-  → p (e, [Seq t]) (f (e', [Seq t']))
-_ErrorTrace =
-  dimap (uncurry ErrorTrace)
-  . fmap $ \ErrorTrace{..} → (_etError, _etTrace)
 
 -- | A lens @'ErrorTrace' t e → e@.
 --

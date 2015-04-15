@@ -32,7 +32,6 @@ library
                      , deepseq >= 1.3
                      , monad-control >=0.3
                      , mtl >=2.1
-                     , profunctors >=4.3
                      , transformers >=0.4
                      , transformers-base >=0.4
 
