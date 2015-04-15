@@ -36,9 +36,8 @@ library
                      , monad-control >=0.3
                      , mtl >=2.1
                      , profunctors >=4.3
-                     , transformers >=0.2
+                     , transformers >=0.4
                      , transformers-base >=0.4
-                     , transformers-compat >=0.3
 
   hs-source-dirs:      src
   default-language:    Haskell2010
