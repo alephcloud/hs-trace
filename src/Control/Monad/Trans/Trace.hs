@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -12,18 +13,24 @@ module Control.Monad.Trans.Trace
 , runTraceT
 ) where
 
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Base
+import Control.Monad.Cont.Class
 import Control.Monad.Error.Class
 import Control.Monad.Identity
+import Control.Monad.RWS.Class hiding (ask)
+import Control.Monad.Reader.Class
+import Control.Monad.State
 import Control.Monad.Trace.Class
 import Control.Monad.Trace.ErrorTrace
 import Control.Monad.Trans
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Either
+import Control.Monad.Trans.Reader (ReaderT(..), withReaderT)
 import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Reader
+import Control.Monad.Writer
 import Data.Monoid
 import Data.Sequence as S
 
@@ -33,7 +40,14 @@ import Data.Sequence as S
 newtype TraceT t e m α
   = TraceT
   { _traceT ∷ EitherT (ErrorTrace t e) (ReaderT (Seq t) m) α
-  } deriving (Functor, Monad, Applicative, Alternative, MonadIO, MonadBase b)
+  } deriving (Applicative, Alternative, Functor, Monad, MonadPlus, MonadIO, MonadCont, MonadFix, MonadState s, MonadBase b, MonadWriter w)
+
+instance MonadReader r m ⇒ MonadReader r (TraceT t e m) where
+  ask = lift ask
+  local f (TraceT (EitherT (ReaderT m))) =
+    TraceT . EitherT . ReaderT $ local f . m
+
+deriving instance MonadRWS r w s m ⇒ MonadRWS r w s (TraceT t e m)
 
 instance Monad m ⇒ MonadError e (TraceT t e m) where
   throwError e = readTrace >>= TraceT . left . ErrorTrace e . (:[])
