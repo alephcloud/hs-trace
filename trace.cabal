@@ -1,5 +1,5 @@
 name:                trace
-version:             0.1.0.5
+version:             0.2.0.0
 synopsis:            A monad transformer for tracing provenience of errors
 -- description:
 license:             MIT
@@ -27,7 +27,7 @@ library
     Control.Monad.Trace.ErrorTrace
     Control.Monad.Trans.Trace
 
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5.0
                      , containers >=0.5.5
                      , deepseq >= 1.3
                      , monad-control >=0.3
