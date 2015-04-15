@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -12,18 +13,24 @@ module Control.Monad.Trans.Trace
 , runTraceT
 ) where
 
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Base
+import Control.Monad.Cont.Class
 import Control.Monad.Error.Class
 import Control.Monad.Identity
+import Control.Monad.RWS.Class hiding (ask)
+import Control.Monad.Reader.Class
+import Control.Monad.State
 import Control.Monad.Trace.Class
 import Control.Monad.Trace.ErrorTrace
 import Control.Monad.Trans
 import Control.Monad.Trans.Control
-import Control.Monad.Trans.Either
+import Control.Monad.Trans.Except
+import Control.Monad.Trans.Reader (ReaderT(..), withReaderT)
 import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Reader
+import Control.Monad.Writer
 import Data.Monoid
 import Data.Sequence as S
 
@@ -32,19 +39,26 @@ import Data.Sequence as S
 --
 newtype TraceT t e m α
   = TraceT
-  { _traceT ∷ EitherT (ErrorTrace t e) (ReaderT (Seq t) m) α
-  } deriving (Functor, Monad, Applicative, Alternative, MonadIO, MonadBase b)
+  { _traceT ∷ ExceptT (ErrorTrace t e) (ReaderT (Seq t) m) α
+  } deriving (Applicative, Alternative, Functor, Monad, MonadPlus, MonadIO, MonadCont, MonadFix, MonadState s, MonadBase b, MonadWriter w)
+
+instance MonadReader r m ⇒ MonadReader r (TraceT t e m) where
+  ask = lift ask
+  local f (TraceT (ExceptT (ReaderT m))) =
+    TraceT . ExceptT . ReaderT $ local f . m
+
+deriving instance MonadRWS r w s m ⇒ MonadRWS r w s (TraceT t e m)
 
 instance Monad m ⇒ MonadError e (TraceT t e m) where
-  throwError e = readTrace >>= TraceT . left . ErrorTrace e . (:[])
-  catchError (TraceT m) h = TraceT (lift $ runEitherT m) >>= either (h . _etError) return
+  throwError e = readTrace >>= TraceT . throwError . ErrorTrace e . (:[])
+  catchError (TraceT m) h = TraceT (lift $ runExceptT m) >>= either (h . _etError) return
 
 instance MonadTrans (TraceT t e) where
-  lift = TraceT . EitherT . (>>= return . Right) . lift
+  lift = TraceT . ExceptT . (>>= return . Right) . lift
 
 instance Monad m ⇒ MonadTrace t (TraceT t e m) where
-  traceScope t = TraceT . mapEitherT (withReaderT (|> t)) . _traceT
-  readTrace = TraceT . EitherT $ ask >>= return . Right
+  traceScope t = TraceT . mapExceptT (withReaderT (|> t)) . _traceT
+  readTrace = TraceT . ExceptT $ ask >>= return . Right
 
 -- | Run a traced traced computation to get either its result, or an error and
 -- its provenience ('ErrorTrace').
@@ -55,11 +69,11 @@ runTraceT
     )
   ⇒ TraceT t e m α
   → m (Either (ErrorTrace t e) α)
-runTraceT (TraceT m) = runReaderT (runEitherT m) S.empty
+runTraceT (TraceT m) = runReaderT (runExceptT m) S.empty
 
 #if MIN_VERSION_monad_control(1,0,0)
 instance MonadTransControl (TraceT t e) where
-  type StT (TraceT t e) α = StT (ReaderT (Seq t)) (StT (EitherT (ErrorTrace t e)) α)
+  type StT (TraceT t e) α = StT (ReaderT (Seq t)) (StT (ExceptT (ErrorTrace t e)) α)
   liftWith f = TraceT . liftWith $ \run → liftWith $ \run' → f $ run' . run . _traceT
   {-# INLINE liftWith #-}
   restoreT = TraceT . restoreT . restoreT
@@ -73,7 +87,7 @@ instance MonadBaseControl b m ⇒ MonadBaseControl b (TraceT t e m) where
   {-# INLINE restoreM #-}
 #else
 instance MonadTransControl (TraceT t e) where
-  newtype StT (TraceT t e) α = StTraceT { unStTraceT ∷ StT (ReaderT (Seq t)) (StT (EitherT (ErrorTrace t e)) α) }
+  newtype StT (TraceT t e) α = StTraceT { unStTraceT ∷ StT (ReaderT (Seq t)) (StT (ExceptT (ErrorTrace t e)) α) }
   liftWith f = TraceT . liftWith $ \run → liftWith $ \run' → f $ liftM StTraceT . run' . run . _traceT
   {-# INLINE liftWith #-}
   restoreT = TraceT . restoreT . restoreT . liftM unStTraceT
