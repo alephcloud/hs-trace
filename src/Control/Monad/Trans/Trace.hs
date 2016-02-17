@@ -74,7 +74,7 @@ runTraceT (TraceT m) = runReaderT (runExceptT m) S.empty
 #if MIN_VERSION_monad_control(1,0,0)
 instance MonadTransControl (TraceT t e) where
   type StT (TraceT t e) α = StT (ReaderT (Seq t)) (StT (ExceptT (ErrorTrace t e)) α)
-  liftWith f = TraceT . liftWith $ \run → liftWith $ \run' → f $ run' . run . _traceT
+  liftWith f = TraceT $ liftWith $ \run → liftWith $ \run' → f $ run' . run . _traceT
   {-# INLINE liftWith #-}
   restoreT = TraceT . restoreT . restoreT
   {-# INLINE restoreT #-}
