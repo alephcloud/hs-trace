@@ -1,5 +1,10 @@
+0.2.0.1
+=======
+
+* Enable building with GHC-8.
+
 0.2.0.0
-======
+=======
 
 * Provided `MonadTrace` instances to the `transformers` menagerie.
 
